@@ -52,10 +52,12 @@ h3:first-child{margin-top:4px}
 #modal video{width:100%;border-radius:10px;background:#000;max-height:55vh}
 #toast{position:fixed;left:50%;top:60px;transform:translateX(-50%);background:#000d;color:#fff;padding:8px 14px;border-radius:20px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:60;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
-@media(min-width:900px){
+@media(min-width:900px),(orientation:landscape) and (max-height:600px){
   body{flex-direction:row;padding:0}
   header{display:none}
-  #sheet{width:380px;height:100%;order:2;border-top:0;border-left:1px solid var(--line)}
+  #hint{top:52px;font-size:10.5px}
+  body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  #sheet{width:min(380px,46vw);height:100%;order:2;border-top:0;border-left:1px solid var(--line)}
   #sheet.min{height:100%}
   #sheet.min #panels{display:block}
   #dtop{display:flex!important}
@@ -82,7 +84,7 @@ h3:first-child{margin-top:4px}
   <canvas id="c"></canvas>
   <div id="dtop"><div class="logo">Naol <span>3D</span> Design</div>
     <button class="ib" id="dUndo">↶ Deebisi</button><button class="ib" id="dRedo">↷</button></div>
-  <div id="hint">Meesha tuqi = filadhu • harkisi = sochoosi • bakka duwwaa harkisi = naannoo naanna’i</div>
+  <div id="hint">Meesha tuqi = filadhu • harkisi = sochoosi • bakka duwwaa harkisi = naannoo naanna’i • v3</div>
   <div id="tools">
     <button data-g="move" class="on">✥ Socho’i</button><button data-g="rot">⟳ Naanni’i</button><button data-g="scale">⤢ Guddisi</button>
     <button id="tMulti">☑ Baay’ee</button><button id="tAll">Hunda</button><button id="tSnap">▦ Snap</button><button id="tPlane">⬍ Lafa</button>
@@ -246,6 +248,8 @@ h3:first-child{margin-top:4px}
 "use strict";
 if(typeof THREE==="undefined"){document.body.innerHTML='<p style="padding:20px">Three.js hin fe’amne. Interneetii kee ilaali.</p>';return;}
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+function showErr(err){let b=document.getElementById('errBox');if(!b){b=document.createElement('div');b.id='errBox';b.style.cssText='position:fixed;left:8px;right:8px;top:8px;z-index:99;background:#5a1a1a;color:#fff;padding:10px;border-radius:10px;font:12px monospace;white-space:pre-wrap;max-height:40vh;overflow:auto';document.body.appendChild(b);b.onclick=()=>b.remove()}b.textContent='Dogoggora (tuqi cufa):\n'+(err&&err.message||err)+'\n'+((err&&err.stack||'').split('\n').slice(0,3).join('\n'))}
+window.addEventListener('error',e=>showErr(e.error||e.message));
 const toast=(m)=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),1800)};
 
 /* ---------- Renderer / Scene ---------- */
@@ -265,7 +269,7 @@ const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
   const pm=new THREE.PMREMGenerator(renderer);
   const es=new THREE.Scene();
   es.add(new THREE.Mesh(new THREE.BoxGeometry(30,30,30),new THREE.MeshBasicMaterial({color:new THREE.Color(0.18,0.19,0.25),side:THREE.BackSide})));
-  [[0,14,0,14,.3,14,5],[14,5,0,.3,8,14,3],[-14,5,0,.3,8,14,2.2],[0,5,14,14,8,.3,3],[0,5,-14,14,8,.3,2]].forEach(a=>{
+  [[0,14,0,14,.3,14,5],[10,10,10,3,.3,3,8],[-10,8,-10,3,.3,3,6],[14,5,0,.3,8,14,3],[-14,5,0,.3,8,14,2.2],[0,5,14,14,8,.3,3],[0,5,-14,14,8,.3,2]].forEach(a=>{
     const m=new THREE.Mesh(new THREE.BoxGeometry(a[3],a[4],a[5]),new THREE.MeshBasicMaterial({color:new THREE.Color().setScalar(a[6])}));
     m.position.set(a[0],a[1],a[2]);es.add(m);
   });
@@ -280,8 +284,11 @@ sun.position.set(6,10,7);sun.castShadow=true;
 sun.shadow.mapSize.set(2048,2048);
 Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:1,far:40});
 sun.shadow.bias=-0.0004;scene.add(sun);
+sun.shadow.radius=3;sun.shadow.normalBias=.02;
+const fill=new THREE.DirectionalLight(0xaac4ff,.5);fill.position.set(-7,4,-3);scene.add(fill);
+const rim=new THREE.DirectionalLight(0xffe2c0,.6);rim.position.set(-2,6,-9);scene.add(rim);
 
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:'#2a2a3a',roughness:.9,metalness:0,side:THREE.DoubleSide}));
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:'#2a2a3a',roughness:.55,metalness:.15,side:THREE.DoubleSide}));
 floor.rotation.x=-Math.PI/2;floor.position.y=-0.002;floor.receiveShadow=true;scene.add(floor);
 const grid=new THREE.GridHelper(40,40,0x6a6a8a,0x3a3a50);grid.position.y=0.001;
 grid.material.transparent=true;grid.material.opacity=.45;scene.add(grid);
@@ -294,6 +301,7 @@ let envI=1;
 const target=new THREE.Vector3(0,0.9,0);
 let az=0.7, el=0.35, dist=9;
 function camUpdate(){
+  if(!isFinite(dist))dist=9;if(!isFinite(az))az=.7;if(!isFinite(el))el=.35;if(!isFinite(target.x+target.y+target.z))target.set(0,.9,0);
   el=Math.max(floor.visible?0.03:-1.45,Math.min(1.5,el));
   dist=Math.max(1,Math.min(60,dist));
   camera.position.set(target.x+dist*Math.cos(el)*Math.sin(az),target.y+dist*Math.sin(el),target.z+dist*Math.cos(el)*Math.cos(az));
@@ -452,7 +460,8 @@ function I(name,role,t,a,p,c,o={}){
 }
 
 function addItem(d){
-  const mat=new THREE.MeshStandardMaterial({color:d.c||'#cccccc',metalness:d.m??.3,roughness:d.ro??.5,envMapIntensity:envI});
+  const mat=new THREE.MeshPhysicalMaterial({color:d.c||'#cccccc',metalness:d.m??.3,roughness:d.ro??.5,envMapIntensity:envI});
+  mat.clearcoat=d.role==='body'?.7:0;mat.clearcoatRoughness=.08;
   mat.opacity=d.op??1;mat.transparent=mat.opacity<1;
   if(d.geo.t==='plane'&&d.role==='logo'){mat.transparent=true;mat.depthWrite=false;mat.side=THREE.DoubleSide;mat.polygonOffset=true;mat.polygonOffsetFactor=-2;mat.color.set('#ffffff');mat.metalness=0;mat.roughness=.6}
   if(DS.includes(d.geo.t)&&d.role!=='logo')mat.side=THREE.DoubleSide;
@@ -797,7 +806,7 @@ $('#lgUpd').onclick=()=>{
 };
 
 /* ---------- Environment ---------- */
-$('#bgCol').oninput=e=>renderer.setClearColor(e.target.value,1);scene.fog.color.set(e.target.value);
+$('#bgCol').oninput=e=>{renderer.setClearColor(e.target.value,1);scene.fog.color.set(e.target.value)};
 $('#floorOn').onchange=e=>{floor.visible=e.target.checked};
 $('#floorCol').oninput=e=>floor.material.color.set(e.target.value);
 $('#gridOn').onchange=e=>{grid.visible=e.target.checked};
@@ -810,7 +819,7 @@ $('#lInt').oninput({target:$('#lInt')});$('#eInt').oninput({target:$('#eInt')});
 function fitView(){
   const b=bounds();if(b.isEmpty())return;
   const c=b.getCenter(new THREE.Vector3()),r=b.getSize(new THREE.Vector3()).length()/2;
-  target.copy(c);dist=Math.max(3,r/Math.sin(THREE.MathUtils.degToRad(camera.fov/2))*0.95);
+  if(!isFinite(r+c.x+c.y+c.z))return;target.copy(c);dist=Math.max(3,r/Math.sin(THREE.MathUtils.degToRad(camera.fov/2))*0.95);
 }
 $$('[data-cam]').forEach(b=>b.onclick=()=>{
   const k=b.dataset.cam;
@@ -897,8 +906,8 @@ $('#mClose').onclick=()=>{$('#modal').style.display='none';$('#mVid').pause();$(
 
 /* ---------- Loop ---------- */
 let last=performance.now();
-function loop(now){
-  requestAnimationFrame(loop);
+function loop(now){requestAnimationFrame(loop);try{frame(now)}catch(err){showErr(err)}}
+function frame(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   if(recording){
     const t=(now-recording.t0)/1000,k=t/recording.dur;
